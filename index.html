@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Word Document Generator</title>
-    <script src="https://unpkg.com/pizzip@3.1.7/dist/pizzip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.6/pizzip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.28.0/docxtemplater.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
@@ -40,6 +40,14 @@
             status.textContent = 'Processing...';
 
             try {
+                // Check if PizZip is defined and has loadAsync
+                if (typeof PizZip === 'undefined') {
+                    throw new Error('PizZip library failed to load. Please check your internet connection or try refreshing the page.');
+                }
+                if (typeof PizZip.prototype.loadAsync !== 'function') {
+                    throw new Error('PizZip.loadAsync is not available. Ensure the correct PizZip version (3.1.6) is loaded.');
+                }
+
                 // Get the selected template and CSV file
                 const templatePath = document.getElementById('template').value;
                 const paramsFile = document.getElementById('params').files[0];
@@ -57,7 +65,7 @@
                 const paramsText = await paramsFile.text();
                 const parsed = Papa.parse(paramsText, { header: true, skipEmptyLines: true });
                 if (parsed.errors.length > 0) {
-                    status.textContent = 'Error parsing CSV file.';
+                    status.textContent = 'Error parsing CSV file: ' + parsed.errors[0].message;
                     return;
                 }
                 const paramRows = parsed.data; // Array of parameter objects
@@ -70,7 +78,7 @@
                 // Fetch the template
                 const response = await fetch(templatePath);
                 if (!response.ok) {
-                    status.textContent = 'Error fetching template.';
+                    status.textContent = `Error fetching template: ${response.statusText}`;
                     return;
                 }
                 const templateArrayBuffer = await response.arrayBuffer();
@@ -110,6 +118,7 @@
                 status.textContent = `Generated ${paramRows.length} document(s) and downloaded as a ZIP file!`;
             } catch (error) {
                 status.textContent = 'Error: ' + error.message;
+                console.error(error);
             }
         }
     </script>
