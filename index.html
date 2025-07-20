@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Word Document Generator</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.6/pizzip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.28.0/docxtemplater.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="js/pizzip.min.js"></script>
+    <script src="js/docxtemplater.min.js"></script>
+    <script src="js/FileSaver.min.js"></script>
+    <script src="js/papaparse.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -40,12 +40,21 @@
             status.textContent = 'Processing...';
 
             try {
-                // Check if PizZip is defined and has loadAsync
+                // Check if libraries are loaded
                 if (typeof PizZip === 'undefined') {
-                    throw new Error('PizZip library failed to load. Please check your internet connection or try refreshing the page.');
+                    throw new Error('PizZip library is not loaded. Ensure js/pizzip.min.js (version 3.1.6) is correctly included in the repository.');
                 }
                 if (typeof PizZip.prototype.loadAsync !== 'function') {
-                    throw new Error('PizZip.loadAsync is not available. Ensure the correct PizZip version (3.1.6) is loaded.');
+                    throw new Error('PizZip.loadAsync is not available. Ensure pizzip version 3.1.6 is used.');
+                }
+                if (typeof docxtemplater === 'undefined') {
+                    throw new Error('docxtemplater library is not loaded. Ensure js/docxtemplater.min.js (version 3.28.0) is correctly included.');
+                }
+                if (typeof saveAs === 'undefined') {
+                    throw new Error('FileSaver library is not loaded. Ensure js/FileSaver.min.js (version 2.0.5) is correctly included.');
+                }
+                if (typeof Papa === 'undefined') {
+                    throw new Error('PapaParse library is not loaded. Ensure js/papaparse.min.js (version 5.3.2) is correctly included.');
                 }
 
                 // Get the selected template and CSV file
@@ -78,7 +87,7 @@
                 // Fetch the template
                 const response = await fetch(templatePath);
                 if (!response.ok) {
-                    status.textContent = `Error fetching template: ${response.statusText}`;
+                    status.textContent = `Error fetching template: ${response.statusText}. Ensure the template file exists at ${templatePath}.`;
                     return;
                 }
                 const templateArrayBuffer = await response.arrayBuffer();
