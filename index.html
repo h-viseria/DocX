@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Document Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.28.0/docxtemplater.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        select, input, button {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Word Document Generator</h1>
+    <p>Select a Word (.docx) template and upload a CSV file with headers matching placeholders (e.g., ##ParamName1##).</p>
+    <label for="template">Select Template:</label>
+    <select id="template">
+        <option value="">-- Select a template --</option>
+        <option value="Templates/GenericResponseTemplateForDefaulters_20Jul2025.docx">GenericResponseTemplateForDefaulters_20Jul2025</option>
+        <option value="Templates/template2.docx">Template 2</option>
+    </select><br>
+    <label for="params">Upload Parameters (.csv):</label>
+    <input type="file" id="params" accept=".csv"><br>
+    <button onclick="generateDocuments()">Generate Documents</button>
+    <p id="status"></p>
+
+    <script>
+        async function generateDocuments() {
+            const status = document.getElementById('status');
+            status.textContent = 'Processing...';
+
+            try {
+                // Get the selected template and CSV file
+                const templatePath = document.getElementById('template').value;
+                const paramsFile = document.getElementById('params').files[0];
+
+                if (!templatePath) {
+                    status.textContent = 'Please select a template.';
+                    return;
+                }
+                if (!paramsFile) {
+                    status.textContent = 'Please upload a CSV file.';
+                    return;
+                }
+
+                // Read the CSV file
+                const paramsText = await paramsFile.text();
+                const parsed = Papa.parse(paramsText, { header: true, skipEmptyLines: true });
+                if (parsed.errors.length > 0) {
+                    status.textContent = 'Error parsing CSV file.';
+                    return;
+                }
+                const paramRows = parsed.data; // Array of parameter objects
+
+                if (paramRows.length === 0) {
+                    status.textContent = 'No data found in CSV file.';
+                    return;
+                }
+
+                // Fetch the template
+                const response = await fetch(templatePath);
+                if (!response.ok) {
+                    status.textContent = 'Error fetching template.';
+                    return;
+                }
+                const templateArrayBuffer = await response.arrayBuffer();
+
+                // Initialize JSZip for the output ZIP file
+                const outputZip = new JSZip();
+
+                // Process each row to generate a document
+                for (let i = 0; i < paramRows.length; i++) {
+                    const params = paramRows[i];
+
+                    // Load the template
+                    const zip = new JSZip();
+                    await zip.loadAsync(templateArrayBuffer);
+
+                    // Initialize docxtemplater with custom delimiters
+                    const doc = new docxtemplater();
+                    doc.loadZip(zip);
+                    doc.setOptions({ delimiters: { start: '##', end: '##' } });
+
+                    // Set the template data
+                    doc.setData(params);
+
+                    // Render the document
+                    doc.render();
+
+                    // Generate the document
+                    const outputDoc = await doc.getZip().generateAsync({ type: 'blob' });
+
+                    // Add to ZIP with a unique filename
+                    outputZip.file(`document_${i + 1}.docx`, outputDoc);
+                }
+
+                // Generate and download the ZIP file
+                const output = await outputZip.generateAsync({ type: 'blob' });
+                saveAs(output, 'documents.zip');
+                status.textContent = `Generated ${paramRows.length} document(s) and downloaded as a ZIP file!`;
+            } catch (error) {
+                status.textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
